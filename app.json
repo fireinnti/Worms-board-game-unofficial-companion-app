@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Worms Companion",
+    "slug": "worms-companion",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark"
+  }
+}
