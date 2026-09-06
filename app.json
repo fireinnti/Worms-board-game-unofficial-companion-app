@@ -4,6 +4,20 @@
     "slug": "worms-companion",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark"
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.fireinnti.wormscompanion"
+    },
+    "ios": {
+      "bundleIdentifier": "com.fireinnti.wormscompanion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "70293d4a-420f-4c74-b476-ac57b7927d90"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

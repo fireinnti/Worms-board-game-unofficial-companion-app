@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { SafeAreaView, View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { RULE_SECTIONS, answerQuestion } from './src/data/rules';
 
 const COLORS = { bg: '#101411', panel: '#182019', panel2: '#202b22', text: '#f2f2e8', muted: '#9ca89b', green: '#b8e34b', orange: '#ffad4d', line: '#334034' };
 
@@ -15,14 +16,7 @@ const STEPS = [
 ];
 
 const RULES = [
-  ['Accuracy', 'Weapons may require an accuracy check before their effect resolves.', 'Weapons · Accuracy'],
-  ['Blast', 'Blast affects the relevant hexes around the impact, following the weapon and card text.', 'Weapons · Blast'],
-  ['Damage', 'Apply damage as instructed by the weapon or other effect. Card text can override a general rule.', 'Weapons · Damage'],
-  ['Direct', 'A Direct effect targets as specified by the card or weapon rather than using scatter.', 'Weapons · Direct'],
-  ['Fire', 'Fire is a triggered effect. When effects trigger together, the active player chooses their resolution order unless another rule or card says otherwise.', 'Fire'],
-  ['Inch', 'Inch means moving to an adjacent Land hex.', 'Movement · Inching'],
-  ['Jump', 'Jump means choosing a hex within two hexes, ignoring intervening hexes, moving there, then Scattering.', 'Movement · Jumping'],
-  ['Action Line', 'Resolve a Weapon Card’s Action Line from left to right.', 'Weapons · Action Line'],
+  ...RULE_SECTIONS.map(rule => [rule.title, rule.text, `Rulebook · p. ${rule.page}`]),
 ];
 
 function Pill({ children, tone = 'green' }) { return <View style={[styles.pill, tone === 'orange' && styles.orangePill]}><Text style={styles.pillText}>{children}</Text></View>; }
@@ -46,7 +40,7 @@ function PlayScreen({ onAsk }) {
 function AskScreen({ initialQuestion }) {
   const [question, setQuestion] = useState(initialQuestion || '');
   const [answer, setAnswer] = useState(null);
-  const ask = () => setAnswer({ ruling: 'The local reference confirms the normal turn sequence, but does not establish a more specific interaction for this question.', resolution: ['Check the card text first.', 'If multiple effects trigger together, the active player chooses their resolution order unless another rule or card says otherwise.', 'If the rulebook does not settle the interaction, use the physical components and agree on a ruling at the table.'], confidence: 'Not specified', source: 'Rulebook · Triggered effects / turn sequence' });
+  const ask = () => setAnswer(answerQuestion(question));
   return <ScrollView contentContainerStyle={styles.content}><View style={styles.eyebrow}><Text style={styles.eyebrowText}>RULES REFEREE</Text><Pill>V1</Pill></View><Text style={styles.title}>Ask the rulebook</Text><Text style={styles.subtle}>Ask a focused scenario question. Answers stay conservative when the source does not settle an interaction.</Text><TextInput value={question} onChangeText={setQuestion} placeholder="Can I Jump twice?" placeholderTextColor="#718071" multiline style={styles.input} /><Pressable onPress={ask} style={styles.askButton}><Text style={styles.askButtonText}>Get a ruling</Text><Text style={styles.askArrow}>→</Text></Pressable>{answer && <View style={styles.answer}><Text style={styles.answerHeading}>RULING</Text><Text style={styles.answerTitle}>{answer.ruling}</Text><Text style={styles.answerHeading}>RESOLUTION</Text>{answer.resolution.map((item, i) => <Text key={item} style={styles.resolution}>{i + 1}. {item}</Text>)}<View style={styles.answerMeta}><Pill tone="orange">{answer.confidence}</Pill><Text style={styles.source}>{answer.source}</Text></View></View>}<Text style={styles.sectionTitle}>TRY ASKING</Text>{['Can I Jump twice?', 'Does card text override the rulebook?', 'Which effect resolves first?'].map(q => <Pressable key={q} onPress={() => setQuestion(q)} style={styles.suggestion}><Text style={styles.suggestionText}>{q}</Text><Text style={styles.chevron}>→</Text></Pressable>)}</ScrollView>;
 }
 
