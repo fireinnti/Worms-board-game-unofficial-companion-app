@@ -31,6 +31,8 @@ Android delivery on pushes to `main`: [build-or-update setup and remote status](
 ## Structure
 
 - `App.js`: screens and shared navigation/query state.
+- `src/ui/theme.js` and `src/ui/components/`: semantic design tokens and accessible reusable UI primitives.
+- `assets/ui/`: original battlefield identity artwork and asset provenance; `assets/fonts/` contains licensed UI fonts.
 - `src/features/game/session.js`: turn model, validation and ordered persistence writer.
 - `src/features/game/useSession.js`: restore/save lifecycle with visible storage failure handling.
 - `src/data/rules/index.js`: source-checked paraphrases, retrieval and conservative common-question answers.
