@@ -3,6 +3,12 @@
     "name": "Worms Companion",
     "slug": "worms-companion",
     "version": "0.1.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/70293d4a-420f-4c74-b476-ac57b7927d90"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",

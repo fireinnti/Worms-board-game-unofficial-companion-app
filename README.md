@@ -15,6 +15,8 @@ npm test
 
 ## Features
 
+Android delivery on pushes to `main`: [build-or-update setup and remote status](docs/android-delivery.md).
+
 - Choose **Standard Edition** (2–4 players) or **Collector’s Edition** (2–6 players) under **Teams / new game**. Collector’s adds Purple and Grey as default extra teams. Names and clockwise turn order remain editable.
 - Select the Target Token holder; use Back / Next and End turn to cycle teams.
 - Session restoration across tabs and restarts, including turn step and Sudden Death.

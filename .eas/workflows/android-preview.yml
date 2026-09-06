@@ -1,0 +1,39 @@
+name: Android preview build or update
+
+# GitHub Actions is the only automatic trigger; avoid duplicate EAS runs.
+jobs:
+  fingerprint:
+    name: Check native compatibility
+    type: fingerprint
+    environment: preview
+
+  get_android_build:
+    name: Find compatible preview APK
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: preview
+      distribution: internal
+      channel: preview
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  build_android:
+    name: Build new preview APK
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  update_android:
+    name: Publish compatible Android update
+    needs: [get_android_build]
+    if: ${{ needs.get_android_build.outputs.build_id }}
+    type: update
+    environment: preview
+    params:
+      platform: android
+      channel: preview

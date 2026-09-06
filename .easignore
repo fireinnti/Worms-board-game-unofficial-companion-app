@@ -4,3 +4,6 @@ node_modules/
 dist/
 .expo/
 .git/
+# Generate native projects from app.json so update configuration is applied.
+android/
+ios/
