@@ -83,6 +83,7 @@ function TeamSetup({ session, onSave, onCancel }) {
         {Object.entries(EDITIONS).map(([id, info]) => (
           <Button
             key={id}
+            surface="light"
             selected={edition === id}
             onPress={() => setEdition(id)}
           >
@@ -112,6 +113,7 @@ function TeamSetup({ session, onSave, onCancel }) {
           (count) => (
             <Button
               key={count}
+              surface="light"
               label={`${count} players`}
               selected={teams.length === count}
               onPress={() => {
@@ -147,6 +149,7 @@ function TeamSetup({ session, onSave, onCancel }) {
             style={styles.teamInput}
           />
           <Button
+            surface="light"
             label={`Move team ${index + 1} earlier`}
             disabled={index === 0}
             onPress={() => move(index)}
@@ -154,6 +157,7 @@ function TeamSetup({ session, onSave, onCancel }) {
             ↑
           </Button>
           <Button
+            surface="light"
             label={`Remove team ${index + 1}`}
             disabled={teams.length <= 2}
             onPress={() => {
@@ -166,6 +170,7 @@ function TeamSetup({ session, onSave, onCancel }) {
         </View>
       ))}
       <Button
+        surface="light"
         disabled={teams.length >= maxPlayers}
         onPress={() => {
           const available = EDITIONS[edition].teams.find(
@@ -188,7 +193,7 @@ function TeamSetup({ session, onSave, onCancel }) {
       <Text style={styles.sectionTitle}>TARGET TOKEN HOLDER</Text>
       <View style={styles.teamButtons}>
         {names.map((name, i) => (
-          <Button key={i} onPress={() => setFirst(i)}>
+          <Button surface="light" key={i} onPress={() => setFirst(i)}>
             {first === i ? "● " : ""}
             {name || `Team ${i + 1}`}
           </Button>
@@ -203,6 +208,7 @@ function TeamSetup({ session, onSave, onCancel }) {
       </Text>
       <Button
         primary
+        surface="light"
         disabled={!valid}
         onPress={() =>
           onSave(reconcileTeams(session, names, first, edition))
@@ -211,6 +217,7 @@ function TeamSetup({ session, onSave, onCancel }) {
         Apply teams
       </Button>
       <Button
+        surface="light"
         disabled={!valid}
         onPress={() =>
           onSave({ ...newSession(names, edition), teamIndex: first })
@@ -218,7 +225,7 @@ function TeamSetup({ session, onSave, onCancel }) {
       >
         Start new game
       </Button>
-      <Button onPress={onCancel}>Cancel</Button>
+      <Button surface="light" onPress={onCancel}>Cancel</Button>
     </View>
   );
 }
@@ -326,12 +333,13 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
         </Pressable>
         <View style={styles.controls}>
           <Button
+            surface="light"
             disabled={step === 0}
             onPress={() => setSession((s) => ({ ...s, step: s.step - 1 }))}
           >
             Back
           </Button>
-          <Button primary disabled={Boolean(session.finalRound?.ended)} onPress={() => setSession(nextStep)}>
+          <Button surface="light" primary disabled={Boolean(session.finalRound?.ended)} onPress={() => setSession(nextStep)}>
             {step === STEPS.length - 1 ? "End turn →" : "Next →"}
           </Button>
         </View>
@@ -369,7 +377,7 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
             Active worm Damaged? Finish any Weapon Card text already being
             resolved, then go to End-turn effects (p. 17).
           </Text>
-          <Button onPress={() => setSession((s) => ({ ...s, step: 5 }))}>
+          <Button surface="light" onPress={() => setSession((s) => ({ ...s, step: 5 }))}>
             Go to End-turn effects
           </Button>
         </View>
@@ -532,7 +540,7 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
         <>
           <Text style={styles.ruleBody}>{detail.text}</Text>
           <Text style={styles.source}>{ruleSource(detail)}</Text>
-          <Button onPress={() => setSelected(null)}>Back to all rules</Button>
+          <Button surface="light" onPress={() => setSelected(null)}>Back to all rules</Button>
           <Text style={styles.sectionTitle}>RELATED RULES</Text>
           <RuleReferences
             references={RULE_SECTIONS.filter(
@@ -656,7 +664,7 @@ function CompanionApp() {
               accessibilityState={{ selected: tab === name }}
               key={name}
               onPress={() => setTab(name)}
-              style={({ pressed, focused }) => [styles.tab, pressed && styles.tabPressed, focused && styles.buttonFocused]}
+              style={({ pressed, focused }) => [styles.tab, pressed && styles.tabPressed, focused && styles.buttonFocusedDark]}
             >
               <TabIcon name={name} active={tab === name} />
               <Text style={[styles.tabText, tab === name && styles.activeTab]}>
