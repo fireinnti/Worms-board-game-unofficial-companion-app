@@ -8,6 +8,7 @@ import {
   ScrollView,
   TextInput,
   Switch,
+  Linking,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -15,6 +16,7 @@ import {
   answerQuestion,
   rulesByIds,
   ruleSource,
+  ruleDocumentLink,
 } from "./src/data/rules";
 import {
   STEPS,
@@ -29,19 +31,30 @@ import { useSession } from "./src/features/game/useSession";
 import { colors, styles, teamColors } from "./src/ui/theme";
 import { Button, Pill, StepMarkers, TabIcon, TeamToken } from "./src/ui/components";
 
-function RuleReferences({ references, onRule }) {
-  return references.map((rule) => (
-    <Pressable
-      accessibilityRole="button"
-      key={rule.id}
-      onPress={() => onRule(rule.id)}
-      style={styles.ruleRow}
-    >
-      <Text style={styles.ruleName}>{rule.title} →</Text>
-      <Text style={styles.ruleBody}>{rule.text}</Text>
-      <View style={styles.sourceBadge}><Text style={styles.source}>{ruleSource(rule)}</Text></View>
-    </Pressable>
-  ));
+function RuleReferences({ references, onRule, locations = false }) {
+  return references.map((rule) => {
+    const documentLink = ruleDocumentLink(rule);
+    return (
+      <View key={rule.id} style={styles.ruleRow}>
+        <Pressable accessibilityRole="button" onPress={() => onRule(rule.id)}>
+          <Text style={styles.ruleName}>{rule.title} →</Text>
+          <Text style={styles.ruleBody}>{rule.excerpt}</Text>
+          <View style={styles.sourceBadge}>
+            <Text style={styles.source}>{ruleSource(rule)}</Text>
+          </View>
+        </Pressable>
+        {locations && (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`${documentLink.label}: ${rule.title}`}
+            onPress={() => Linking.openURL(documentLink.url)}
+          >
+            <Text style={styles.ruleName}>{documentLink.label} ↗</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  });
 }
 
 function TeamSetup({ session, onSave, onCancel }) {
@@ -452,7 +465,7 @@ function AskScreen({
       </Button>
       {answer && (
         <View style={styles.answer}>
-          <Text style={styles.answerHeading}>RULING</Text>
+          <Text style={styles.answerHeading}>{answer.confidence.toUpperCase()}</Text>
           <Text style={styles.answerTitle}>{answer.ruling}</Text>
           <Text style={styles.answerHeading}>RESOLUTION</Text>
           {answer.resolution.map((item, i) => (
@@ -463,7 +476,12 @@ function AskScreen({
           <View style={styles.answerMeta}>
             <Pill tone="orange">{answer.confidence}</Pill>
           </View>
-          <RuleReferences references={answer.references} onRule={onRule} />
+          <Text style={styles.sectionTitle}>LIKELY RULEBOOK LOCATIONS</Text>
+          {answer.references.length ? (
+            <RuleReferences references={answer.references} onRule={onRule} locations />
+          ) : (
+            <Text style={styles.subtle}>No clear rule found in either indexed source document.</Text>
+          )}
         </View>
       )}
       <Text style={styles.sectionTitle}>TRY ASKING</Text>

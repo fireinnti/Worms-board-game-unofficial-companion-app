@@ -37,3 +37,7 @@ The user confirmed that the additional colours are Purple and Grey; these are th
 ## Remaining scope
 
 No complete Weapon Card database, full guided interaction resolver, optional-rule automation, worm-count tracking or final-round automation. A damaged-worm shortcut moves to End-turn effects after the player has resolved applicable text. The physical board and cards remain authoritative.
+
+## Structured retrieval index — 2026-09-06
+
+The verified documents above are now represented by separate immutable source-document IDs (`main-rulebook` and `extra-rules`). Every passage records its PDF and printed page coordinates; the two coordinate systems coincide in these supplied files. Search returns ranked passages rather than treating keyword overlap as a ruling. The source binaries remain excluded from the repository, and no unverified PDF mirror has been substituted. Consequently the UI labels its publisher-page action as a fallback; setting a verified `pdfUrl` in the source manifest automatically enables `#page=` deep links.
