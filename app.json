@@ -12,10 +12,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
-    "splash": {
-      "backgroundColor": "#101411",
-      "resizeMode": "contain"
-    },
     "android": {
       "package": "com.fireinnti.wormscompanion"
     },
@@ -28,7 +24,13 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#101411"
+        }
+      ]
     ]
   }
 }

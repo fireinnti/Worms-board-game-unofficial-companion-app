@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   Pressable,
@@ -9,6 +8,7 @@ import {
   StyleSheet,
   Switch,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
   RULE_SECTIONS,
   answerQuestion,
@@ -581,6 +581,14 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
 }
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <CompanionApp />
+    </SafeAreaProvider>
+  );
+}
+
+function CompanionApp() {
   const [tab, setTab] = useState("Play");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);

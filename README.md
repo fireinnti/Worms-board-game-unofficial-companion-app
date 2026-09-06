@@ -11,7 +11,10 @@ npm run web
 npm test
 ```
 
-`npm run android` and `npm run ios` build native development apps with the installed toolchains. This change adds AsyncStorage, so an existing standalone native build needs rebuilding to include that native module. Expo's SDK 51 bundled version (1.23.1) is used.
+Uses Expo SDK 57 with React Native 0.86 and React 19.2. `npm run android` and
+`npm run ios` build native development apps with the installed toolchains.
+Install a new native build after this SDK upgrade; existing SDK 51 APKs cannot
+receive it as an OTA update. AsyncStorage remains responsible for saved sessions.
 
 ## Features
 
