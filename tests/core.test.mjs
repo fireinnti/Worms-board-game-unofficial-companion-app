@@ -82,7 +82,7 @@ test("keywords in a complex scenario never imply a verified ruling", () => {
   ])
     assert.equal(
       answerQuestion(query).confidence,
-      "Not specified by this reference",
+      "Related passage",
     );
 });
 test("common answers cite the actual supporting sections", () => {
@@ -123,10 +123,10 @@ test("every turn step has valid references and rule IDs are unique", () => {
 
 test("six-player answers cite the expansion separately from the main rulebook", () => {
   const answer = answerQuestion("Can we play with 6 players?");
-  assert.equal(answer.confidence, "Explicitly covered");
+  assert.equal(answer.confidence, "Exact answer");
   assert.equal(answer.references[0].id, "extra-players");
   assert.equal(answer.references[0].source, "Extra Rules");
-  assert.match(answer.source, /Extra Rules · p. 1/);
+  assert.match(answer.source, /Extra Rules · PDF p. 1 · printed p. 1/);
 });
 
 test("edition persists for a Collector’s game with only two players", () => {
@@ -225,4 +225,38 @@ test("edition validation rejects unknown editions and oversized Standard games",
   assert.doesNotThrow(() =>
     newSession(["A", "B", "C", "D", "E", "F"], "collectors"),
   );
+});
+
+
+test("ranked retrieval handles paraphrases and returns several passages", () => {
+  const water = retrieveRules("If my worm leaps into the ocean, does it drown?");
+  assert.equal(water[0].id, "water");
+  assert.ok(water.some((rule) => rule.id === "movement"));
+  const crowded = retrieveRules("What if several pieces occupy one space?");
+  assert.equal(crowded[0].id, "full-hex");
+});
+
+test("multi-Thing interactions retrieve each relevant passage without inventing a ruling", () => {
+  const query = "A blast hits two worms, an oil barrel, a mine, and a supply crate";
+  const ids = retrieveRules(query).map(({ id }) => id);
+  assert.ok(ids.includes("blast"));
+  assert.ok(ids.includes("oil-drum"));
+  assert.ok(ids.includes("mine") || ids.includes("supply-crate"));
+  assert.equal(answerQuestion(query).confidence, "Related passage");
+});
+
+test("unrelated questions have no result instead of arbitrary passages", () => {
+  assert.deepEqual(retrieveRules("Who won the football match yesterday?"), []);
+  assert.equal(answerQuestion("Who won the football match yesterday?").confidence, "No clear rule found");
+});
+
+test("indexed passages distinguish PDF and printed pages across documents", () => {
+  const main = retrieveRules("How does Sudden Death work?")[0];
+  const extra = retrieveRules("How do six players set up?")[0];
+  assert.equal(main.sourceDocumentId, "main-rulebook");
+  assert.deepEqual(main.pdfPages, [11, 21]);
+  assert.deepEqual(main.printedPages, [11, 21]);
+  assert.equal(extra.sourceDocumentId, "extra-rules");
+  assert.deepEqual(extra.pdfPages, [1]);
+  assert.deepEqual(extra.printedPages, [1]);
 });

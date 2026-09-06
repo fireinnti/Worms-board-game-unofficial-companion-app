@@ -1,7 +1,7 @@
 // Paraphrased summaries checked against the supplied 24-page digital rulebook.
 // See docs/rules-audit.md for source identity and verification notes.
 // Keep this dataset small and retrieval-friendly; the physical game remains the source of truth.
-export const RULE_SECTIONS = [
+const SECTIONS = [
   {
     id: "turn-sequence",
     title: "Turn sequence",
@@ -244,6 +244,49 @@ export const RULE_SECTIONS = [
   },
 ];
 
+export const SOURCE_DOCUMENTS = {
+  "main-rulebook": {
+    id: "main-rulebook",
+    title: "Worms: The Board Game — Rulebook",
+    shortTitle: "Main rulebook",
+    fileName: "Copy of Worms - Rulebook DIGITAL.pdf",
+    sha256: "8e92b7f42f74d06a97e13e4effe179080b62bd644da3fc8913a6dfdc44b11511",
+    pdfPages: 24,
+    publisher: "Steamforged Games",
+    // The verified source was supplied locally; do not substitute an unverified mirror.
+    pdfUrl: null,
+    fallbackUrl: "https://steamforged.com/products/worms-the-board-game",
+  },
+  "extra-rules": {
+    id: "extra-rules",
+    title: "Worms: The Board Game — Extra Rules",
+    shortTitle: "Extra Rules",
+    fileName: "additionalplayers.pdf",
+    sha256: "dc9e359d1ad2126d1367300b6c7a90aae7e20374ecb70210ec3d1bd54adbc621",
+    pdfPages: 1,
+    publisher: "Steamforged Games",
+    pdfUrl: null,
+    fallbackUrl: "https://steamforged.com/products/worms-the-board-game",
+  },
+};
+
+const pageNumbers = (page) => String(page).split(/[^0-9]+/).filter(Boolean).map(Number);
+
+// Every indexed passage carries both coordinate systems and an immutable source ID.
+// In these verified files printed numbering and PDF positioning coincide.
+export const RULE_SECTIONS = SECTIONS.map((section) => {
+  const sourceDocumentId = section.source === "Extra Rules" ? "extra-rules" : "main-rulebook";
+  const pages = pageNumbers(section.page);
+  return {
+    ...section,
+    sourceDocumentId,
+    source: SOURCE_DOCUMENTS[sourceDocumentId].shortTitle,
+    pdfPages: pages,
+    printedPages: pages,
+    excerpt: section.text,
+  };
+});
+
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -276,38 +319,47 @@ const STOP_WORDS = new Set([
   "be",
   "are",
   "you",
+  "match",
 ]);
+const ALIASES = {
+  ocean: "water", sea: "water", drown: "water", drowning: "water",
+  walking: "inch", walk: "inch", leap: "jump", leaping: "jump",
+  object: "thing", objects: "thing", pieces: "thing", piece: "thing",
+  space: "hex", spaces: "hex", crowded: "full", several: "full",
+  explode: "blast", explodes: "blast", explosion: "blast",
+  barrels: "drum", barrel: "drum", pickups: "crate", pickup: "crate",
+  simultaneous: "same-time", together: "same-time", first: "order",
+};
+const stem = (word) => word.length > 4 ? word.replace(/(ing|ers|ies|ed|es|s)$/, "") : word;
 const tokenize = (text) =>
   text
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 1 && !STOP_WORDS.has(t));
+    .filter((t) => t.length > 1 && !STOP_WORDS.has(t))
+    .flatMap((term) => [term, ALIASES[term]].filter(Boolean))
+    .map(stem);
 
-export function retrieveRules(query, limit = 5) {
+export function retrieveRules(query, limit = 8) {
   const terms = [...new Set(tokenize(query))];
-  return RULE_SECTIONS.map((section) => {
-    const words = new Set(tokenize(`${section.title} ${section.text}`));
+  if (!terms.length) return [];
+  return RULE_SECTIONS.map((section, order) => {
     const titleWords = new Set(tokenize(section.title));
-    return {
-      section,
-      score: terms.reduce(
-        (score, term) =>
-          score +
-          (titleWords.has(term)
-            ? 5
-            : section.tags.includes(term)
-              ? 3
-              : words.has(term)
-                ? 1
-                : 0),
-        0,
-      ),
-    };
+    const tagWords = new Set(tokenize(section.tags.join(" ")));
+    const passageWords = new Set(tokenize(section.excerpt));
+    const matchedTerms = terms.filter((term) =>
+      titleWords.has(term) || tagWords.has(term) || passageWords.has(term)
+    );
+    const score = matchedTerms.reduce((total, term) => total +
+      (titleWords.has(term) ? 8 : 0) +
+      (tagWords.has(term) ? 5 : 0) +
+      (passageWords.has(term) ? 2 : 0), 0) +
+      (matchedTerms.length > 1 ? matchedTerms.length * 3 : 0);
+    return { section, score, matchedTerms, order };
   })
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((item) => item.section);
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || b.matchedTerms.length - a.matchedTerms.length || a.order - b.order)
+    .slice(0, Math.max(1, limit))
+    .map(({ section, score, matchedTerms }) => ({ ...section, score, matchedTerms }));
 }
 
 export function rulesByIds(ids) {
@@ -317,7 +369,15 @@ export function rulesByIds(ids) {
 }
 
 export function ruleSource(rule) {
-  return `${rule.source || "Rulebook"} · p. ${rule.page}`;
+  return `${rule.source || "Main rulebook"} · PDF p. ${rule.page} · printed p. ${rule.page}`;
+}
+
+
+export function ruleDocumentLink(rule) {
+  const document = SOURCE_DOCUMENTS[rule.sourceDocumentId];
+  return document.pdfUrl
+    ? { url: `${document.pdfUrl}#page=${rule.pdfPages[0]}`, deepLinked: true, label: `Open PDF at page ${rule.pdfPages[0]}` }
+    : { url: document.fallbackUrl, deepLinked: false, label: "PDF page link unavailable — open publisher page" };
 }
 
 function result(ruling, resolution, confidence, references) {
@@ -350,7 +410,7 @@ export function answerQuestion(query) {
         "Check each destination for triggered effects and Water; do not continue movement after the Damage rule sends you to End turn.",
         "Otherwise, you may take the second Jump, resolving its landing effects and Scatter in the same way.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["turn-sequence", "movement", "damage"]),
     );
   }
@@ -365,7 +425,7 @@ export function answerQuestion(query) {
         "Skip the movement step you do not want to use.",
         "Continue to the next turn step.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["movement", "turn-sequence"]),
     );
   }
@@ -373,7 +433,7 @@ export function answerQuestion(query) {
     return result(
       "Yes, where the card and rulebook contradict each other, the card takes precedence.",
       ["Read the card instruction and apply it to that conflict."],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["card-priority"]),
     );
   }
@@ -388,7 +448,7 @@ export function answerQuestion(query) {
         "Check that the effects actually trigger simultaneously.",
         "Follow any specific ordering instructions, such as worms before other Things in a Blast.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["simultaneous-effects", "blast"]),
     );
   }
@@ -399,7 +459,7 @@ export function answerQuestion(query) {
         "Resolve its text and keep it face up.",
         "Apply its ongoing rules, and use its Drop portion on later Drop steps.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["sudden-death", "drop-card"]),
     );
   }
@@ -410,7 +470,7 @@ export function answerQuestion(query) {
         "Choose a worm on your team; the activation rule does not require alternating worms.",
         "Resolve any activation crate pickup, then healing.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["activation"]),
     );
   }
@@ -426,7 +486,7 @@ export function answerQuestion(query) {
         "Use normal setup and starting hands, with four worms and one Oil Drum, Supply Crate and Mine per player.",
         "Add a Map Tile for each extra player and use their matching team rings.",
       ],
-      "Explicitly covered",
+      "Exact answer",
       rulesByIds(["extra-players", "setup", "starting-hand"]),
     );
   }
@@ -443,7 +503,7 @@ export function answerQuestion(query) {
       : [
           "Try naming the relevant action or Thing, such as Jump, Mine, or Fire.",
         ],
-    "Not specified by this reference",
+    matches.length ? "Related passage" : "No clear rule found",
     matches,
   );
 }
