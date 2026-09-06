@@ -5,6 +5,10 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#101411",
+      "resizeMode": "contain"
+    },
     "android": {
       "package": "com.fireinnti.wormscompanion"
     },
