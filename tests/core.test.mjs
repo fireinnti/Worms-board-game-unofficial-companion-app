@@ -5,7 +5,7 @@ const moduleFrom = async (path) =>
   import(
     `data:text/javascript;base64,${Buffer.from(await readFile(new URL(path, import.meta.url))).toString("base64")}`
   );
-const { newSession, nextStep, parseSession, createSessionWriter, STEPS } =
+const { newSession, nextStep, parseSession, createSessionWriter, updateTeamStatus, calculateWinner, STEPS } =
   await moduleFrom("../src/features/game/session.js");
 const { answerQuestion, retrieveRules, RULE_SECTIONS } = await moduleFrom(
   "../src/data/rules/index.js",
@@ -47,7 +47,7 @@ test("saved sessions round-trip and reject corrupted state", () => {
     { teams: ["BLUE", "BLUE"] },
     { teams: [] },
     { suddenDeath: "yes" },
-    { version: 2 },
+    { version: 3 },
     { turn: 0 },
   ])
     assert.throws(() => parseSession(JSON.stringify({ ...game, ...patch })));
@@ -146,8 +146,9 @@ test("old saves gain an edition without losing their current game", () => {
     ["GREY", "BLUE"],
     ["A", "B", "C", "D", "E", "F"],
   ]) {
-    const { edition, ...legacy } = {
+    const { edition, teamStatus, finalRound, ...legacy } = {
       ...newSession(teams),
+      version: 1,
       step: 6,
       teamIndex: 1,
       turn: 12,
@@ -158,9 +159,61 @@ test("old saves gain an edition without losing their current game", () => {
       restored.edition,
       teams.length > 4 || teams.includes("GREY") ? "collectors" : "standard",
     );
-    const { edition: inferred, ...game } = restored;
-    assert.deepEqual(game, legacy);
+    assert.equal(restored.version, 2);
+    assert.deepEqual(restored.teamStatus, Object.fromEntries(teams.map((t) => [t, { remaining: 4, damaged: 0 }])));
+    assert.equal(restored.finalRound, null);
+    const { edition: _e, teamStatus: _s, finalRound: _f, version: _v, ...restoredGame } = restored;
+    const { version: _legacyVersion, ...legacyGame } = legacy;
+    assert.deepEqual(restoredGame, legacyGame);
   }
+});
+
+test("worm counts are strict and damaged worms cannot exceed remaining worms", () => {
+  const game = newSession();
+  for (const teamStatus of [
+    { ...game.teamStatus, BLUE: { remaining: 3.5, damaged: 0 } },
+    { ...game.teamStatus, BLUE: { remaining: 3, damaged: 4 } },
+    { ...game.teamStatus, BLUE: { remaining: -1, damaged: 0 } },
+    { ...game.teamStatus, BLUE: { remaining: 5, damaged: 0 } },
+  ]) assert.throws(() => parseSession(JSON.stringify({ ...game, teamStatus })));
+});
+
+test("elimination starts a final round after the current turn and includes that player", () => {
+  let game = { ...newSession(["A", "B", "C"]), teamIndex: 1, step: 7 };
+  game = updateTeamStatus(game, "A", { remaining: 0, damaged: 0 });
+  assert.deepEqual(game.finalRound.remainingTeams, ["C", "B"]);
+  game = nextStep(game);
+  assert.equal(game.teamIndex, 2);
+  assert.deepEqual(game.finalRound.remainingTeams, ["B"]);
+  for (let i = 0; i < 8; i++) game = nextStep(game);
+  assert.equal(game.teams[game.teamIndex], "B");
+  assert.deepEqual(game.finalRound.remainingTeams, []);
+  for (let i = 0; i < 8; i++) game = nextStep(game);
+  assert.equal(game.finalRound.ended, true);
+});
+
+test("normal and final-round rotation skips eliminated teams", () => {
+  let game = updateTeamStatus(newSession(["A", "B", "C", "D"]), "C", { remaining: 0, damaged: 0 });
+  game = { ...game, finalRound: null, step: 7 };
+  assert.equal(nextStep(game).teams[nextStep(game).teamIndex], "B");
+  game = { ...game, teamIndex: 1 };
+  assert.equal(nextStep(game).teams[nextStep(game).teamIndex], "D");
+});
+
+test("winner uses remaining worms, then undamaged worms, and preserves draws", () => {
+  const ended = (statuses) => ({ ...newSession(Object.keys(statuses)), teamStatus: statuses, finalRound: { remainingTeams: [], activeTeam: null, ended: true } });
+  assert.equal(calculateWinner(ended({ A: { remaining: 2, damaged: 2 }, B: { remaining: 1, damaged: 0 } })).winner, "A");
+  assert.equal(calculateWinner(ended({ A: { remaining: 2, damaged: 1 }, B: { remaining: 2, damaged: 2 } })).winner, "A");
+  const draw = calculateWinner(ended({ A: { remaining: 2, damaged: 1 }, B: { remaining: 2, damaged: 1 } }));
+  assert.equal(draw.draw, true);
+  assert.deepEqual(draw.teams, ["A", "B"]);
+});
+
+test("elimination and final-round state survive persistence", () => {
+  let game = updateTeamStatus(newSession(["A", "B"]), "B", { remaining: 0, damaged: 0 });
+  game = { ...game, step: 7 };
+  game = nextStep(game);
+  assert.deepEqual(parseSession(JSON.stringify(game)), game);
 });
 
 test("edition validation rejects unknown editions and oversized Standard games", () => {

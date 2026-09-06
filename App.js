@@ -21,6 +21,9 @@ import {
   EDITIONS,
   newSession,
   nextStep,
+  updateTeamStatus,
+  reconcileTeams,
+  calculateWinner,
 } from "./src/features/game/session";
 import { useSession } from "./src/features/game/useSession";
 import { colors, styles, teamColors } from "./src/ui/theme";
@@ -189,7 +192,7 @@ function TeamSetup({ session, onSave, onCancel }) {
         primary
         disabled={!valid}
         onPress={() =>
-          onSave({ ...session, edition, teams: names, teamIndex: first })
+          onSave(reconcileTeams(session, names, first, edition))
         }
       >
         Apply teams
@@ -212,6 +215,10 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
   const { step, teams, teamIndex, suddenDeath } = session;
   const team = teams[teamIndex];
   const current = STEPS[step];
+  const result = calculateWinner(session);
+  const nextTeam = session.finalRound
+    ? session.finalRound.remainingTeams.find((t) => session.teamStatus[t].remaining > 0)
+    : Array.from({ length: teams.length - 1 }, (_, i) => teams[(teamIndex + i + 1) % teams.length]).find((t) => session.teamStatus[t].remaining > 0);
   const guidance =
     step === 6 && suddenDeath
       ? "Resolve the Drop portion of the face-up Sudden Death Card instead of drawing a card."
@@ -223,6 +230,22 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
         <Pill>TURN {session.turn}</Pill>
       </View>
       <View style={[styles.heroBanner, { backgroundColor: teamColors[team] || colors.grassGreen, borderLeftColor: colors.ink }]}><Text style={styles.hero}>{team}'S TURN</Text></View>
+      {session.finalRound && !session.finalRound.ended && (
+        <View style={styles.finalBanner}>
+          <Text style={styles.finalTitle}>FINAL ROUND</Text>
+          <Text style={styles.finalText}>
+            {session.finalRound.remainingTeams.length + (session.finalRound.activeTeam ? 1 : 0)} final {session.finalRound.remainingTeams.length + (session.finalRound.activeTeam ? 1 : 0) === 1 ? "turn" : "turns"} remaining
+          </Text>
+        </View>
+      )}
+      {result && (
+        <View style={styles.finalBanner}>
+          <Text style={styles.finalTitle}>GAME OVER</Text>
+          <Text style={styles.finalText}>
+            {result.draw ? `Draw: ${result.teams.join(" & ")}` : `${result.winner} wins`} · {result.remaining} worms · {result.undamaged} undamaged
+          </Text>
+        </View>
+      )}
       <Text style={styles.subtle}>
         {EDITIONS[session.edition].label} · {teams.length} players
       </Text>
@@ -232,10 +255,34 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
       <View style={styles.teamRow}>
         <Text style={styles.label}>CURRENT TEAM · CLOCKWISE ORDER</Text>
         <View style={styles.teamButtons}>
-          {teams.map((name, index) => (
-            <TeamToken key={name} name={name} selected={index === teamIndex}
-              onPress={() => setSession((s) => ({ ...s, teamIndex: index }))} />
-          ))}
+          {teams.map((name, index) => {
+            const status = session.teamStatus[name];
+            const eliminated = status.remaining === 0;
+            const change = (field, delta) => setSession((s) => {
+              const old = s.teamStatus[name];
+              return updateTeamStatus(s, name, { [field]: old[field] + delta });
+            });
+            return <View key={name} style={[styles.teamStatus, eliminated && styles.eliminated]}>
+            <TeamToken
+              name={name}
+              selected={index === teamIndex}
+              disabled={eliminated}
+              onPress={() => setSession((s) => ({ ...s, teamIndex: index }))}
+            />
+            <Text style={styles.counterLabel}>{eliminated ? "ELIMINATED" : "REMAINING"}</Text>
+            <View style={styles.counterRow}>
+              <Button label={`Remove one remaining ${name} worm`} disabled={status.remaining <= status.damaged} onPress={() => change("remaining", -1)}>−</Button>
+              <Text style={styles.counterValue}>{status.remaining}</Text>
+              <Button label={`Add one remaining ${name} worm`} disabled={status.remaining >= 4} onPress={() => change("remaining", 1)}>+</Button>
+            </View>
+            <Text style={styles.counterLabel}>DAMAGED</Text>
+            <View style={styles.counterRow}>
+              <Button label={`Remove one damaged ${name} worm`} disabled={status.damaged === 0} onPress={() => change("damaged", -1)}>−</Button>
+              <Text style={styles.counterValue}>{status.damaged}</Text>
+              <Button label={`Add one damaged ${name} worm`} disabled={status.damaged >= status.remaining} onPress={() => change("damaged", 1)}>+</Button>
+            </View>
+            </View>;
+          })}
         </View>
       </View>
       <Button onPress={() => setSetup(!setup)}>Teams / new game</Button>
@@ -271,13 +318,13 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
           >
             Back
           </Button>
-          <Button primary onPress={() => setSession(nextStep)}>
+          <Button primary disabled={Boolean(session.finalRound?.ended)} onPress={() => setSession(nextStep)}>
             {step === STEPS.length - 1 ? "End turn →" : "Next →"}
           </Button>
         </View>
         {step === 7 && (
           <Text style={styles.subtle}>
-            Next: {teams[(teamIndex + 1) % teams.length]}
+            Next: {nextTeam || "Game over"}
           </Text>
         )}
       </View>
