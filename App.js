@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { useFonts } from "expo-font";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   View,
   Text,
   Pressable,
   ScrollView,
   TextInput,
-  StyleSheet,
   Switch,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -22,64 +23,8 @@ import {
   nextStep,
 } from "./src/features/game/session";
 import { useSession } from "./src/features/game/useSession";
-
-const COLORS = {
-  bg: "#101411",
-  panel: "#182019",
-  panel2: "#202b22",
-  text: "#f2f2e8",
-  muted: "#9ca89b",
-  green: "#b8e34b",
-  orange: "#ffad4d",
-  line: "#334034",
-};
-const TEAM_COLORS = {
-  BLUE: "#79b7ff",
-  RED: "#ff8585",
-  YELLOW: "#f6df65",
-  GREEN: "#8adb83",
-  PURPLE: "#c49aff",
-  GREY: "#b8bec5",
-};
-
-function Pill({ children, tone = "green" }) {
-  return (
-    <View style={[styles.pill, tone === "orange" && styles.orangePill]}>
-      <Text style={styles.pillText}>{children}</Text>
-    </View>
-  );
-}
-
-function Button({
-  children,
-  onPress,
-  disabled = false,
-  primary = false,
-  label,
-  selected,
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{
-        disabled,
-        ...(selected === undefined ? {} : { selected }),
-      }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[
-        primary ? styles.askButton : styles.secondaryButton,
-        disabled && styles.disabled,
-        selected && styles.activeTeam,
-      ]}
-    >
-      <Text style={primary ? styles.askButtonText : styles.buttonText}>
-        {children}
-      </Text>
-    </Pressable>
-  );
-}
+import { colors, styles, teamColors } from "./src/ui/theme";
+import { Button, Pill, StepMarkers, TabIcon, TeamToken } from "./src/ui/components";
 
 function RuleReferences({ references, onRule }) {
   return references.map((rule) => (
@@ -91,7 +36,7 @@ function RuleReferences({ references, onRule }) {
     >
       <Text style={styles.ruleName}>{rule.title} →</Text>
       <Text style={styles.ruleBody}>{rule.text}</Text>
-      <Text style={styles.source}>{ruleSource(rule)}</Text>
+      <View style={styles.sourceBadge}><Text style={styles.source}>{ruleSource(rule)}</Text></View>
     </Pressable>
   ));
 }
@@ -277,7 +222,7 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
         <Text style={styles.eyebrowText}>TURN ASSISTANT</Text>
         <Pill>TURN {session.turn}</Pill>
       </View>
-      <Text style={styles.hero}>{team}'S TURN</Text>
+      <View style={[styles.heroBanner, { backgroundColor: teamColors[team] || colors.grassGreen, borderLeftColor: colors.ink }]}><Text style={styles.hero}>{team}'S TURN</Text></View>
       <Text style={styles.subtle}>
         {EDITIONS[session.edition].label} · {teams.length} players
       </Text>
@@ -288,25 +233,8 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
         <Text style={styles.label}>CURRENT TEAM · CLOCKWISE ORDER</Text>
         <View style={styles.teamButtons}>
           {teams.map((name, index) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: index === teamIndex }}
-              key={name}
-              onPress={() => setSession((s) => ({ ...s, teamIndex: index }))}
-              style={[
-                styles.teamButton,
-                index === teamIndex && styles.activeTeam,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.teamText,
-                  { color: TEAM_COLORS[name] || COLORS.text },
-                ]}
-              >
-                {name}
-              </Text>
-            </Pressable>
+            <TeamToken key={name} name={name} selected={index === teamIndex}
+              onPress={() => setSession((s) => ({ ...s, teamIndex: index }))} />
           ))}
         </View>
       </View>
@@ -321,18 +249,11 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
           onCancel={() => setSetup(false)}
         />
       )}
-      <View style={styles.card}>
+      <View style={[styles.card, step === STEPS.length - 1 && styles.finalMission]}>
         <Text style={styles.cardLabel}>
-          STEP {step + 1} OF {STEPS.length}
+          {step === STEPS.length - 1 ? "FINAL STEP · " : ""}STEP {step + 1} OF {STEPS.length}
         </Text>
-        <View style={styles.progress}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${((step + 1) / STEPS.length) * 100}%` },
-            ]}
-          />
-        </View>
+        <StepMarkers step={step} count={STEPS.length} onSelect={(index) => setSession((s) => ({ ...s, step: index }))} />
         <Text style={styles.stepTitle}>{current.title}</Text>
         <Text style={styles.stepBody}>{guidance}</Text>
         <Pressable
@@ -401,8 +322,9 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
       >
         What happens now? →
       </Button>
-      <View style={styles.statusRow}>
-        <Text style={styles.statusLabel}>
+      <View style={styles.hazard}>
+        <View style={styles.statusRow}>
+        <Text style={styles.hazardText}>
           SUDDEN DEATH {suddenDeath ? "ON" : "OFF"}
         </Text>
         <Switch
@@ -411,12 +333,14 @@ function PlayScreen({ session, setSession, onAsk, onRule }) {
           onValueChange={(value) =>
             setSession((s) => ({ ...s, suddenDeath: value }))
           }
-          trackColor={{ true: COLORS.green }}
+          trackColor={{ false: colors.line, true: colors.explosionOrange }}
         />
       </View>
       <Text style={styles.subtle}>
-        Turn this on when you reveal and resolve the Sudden Death Card.
+        Final round / Sudden Death status uses hazard accents as well as this
+        explicit ON/OFF label. Turn it on when the card is revealed.
       </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -468,7 +392,7 @@ function AskScreen({
         value={question}
         onChangeText={edit}
         placeholder="Can I Jump twice?"
-        placeholderTextColor="#718071"
+        placeholderTextColor="#65705F"
         multiline
         style={styles.input}
       />
@@ -565,7 +489,7 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
             value={query}
             onChangeText={setQuery}
             placeholder="Search terms"
-            placeholderTextColor="#718071"
+            placeholderTextColor="#65705F"
             style={styles.search}
           />
           {!filtered.length && (
@@ -589,6 +513,13 @@ export default function App() {
 }
 
 function CompanionApp() {
+  const [fontsLoaded] = useFonts({
+    BattleDisplay:
+      "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/bungee/Bungee-Regular.ttf",
+    RulesText:
+      "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext%5Bwght%5D.ttf",
+    ...MaterialCommunityIcons.font,
+  });
   const [tab, setTab] = useState("Play");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
@@ -606,6 +537,7 @@ function CompanionApp() {
     setAnswer(null);
     setTab("Ask");
   };
+  if (!fontsLoaded) return <SafeAreaView style={styles.safe}><Text style={styles.loading}>Loading field kit…</Text></SafeAreaView>;
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.app}>
@@ -659,11 +591,9 @@ function CompanionApp() {
               accessibilityState={{ selected: tab === name }}
               key={name}
               onPress={() => setTab(name)}
-              style={styles.tab}
+              style={({ pressed, focused }) => [styles.tab, pressed && styles.tabPressed, focused && styles.buttonFocused]}
             >
-              <Text style={[styles.tabIcon, tab === name && styles.activeTab]}>
-                {name === "Play" ? "◉" : name === "Ask" ? "?" : "☷"}
-              </Text>
+              <TabIcon name={name} active={tab === name} />
               <Text style={[styles.tabText, tab === name && styles.activeTab]}>
                 {name}
               </Text>
@@ -674,283 +604,3 @@ function CompanionApp() {
     </SafeAreaView>
   );
 }
-const styles = StyleSheet.create({
-  buttonText: { color: "#c8d0c5", fontSize: 14 },
-  secondaryButton: {
-    minHeight: 48,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 8,
-  },
-  disabled: { opacity: 0.4 },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  setupRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  teamInput: {
-    flex: 1,
-    minWidth: 50,
-    minHeight: 48,
-    color: COLORS.text,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-  },
-  error: { color: COLORS.orange, fontSize: 13, lineHeight: 18 },
-  notice: { padding: 12 },
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  app: { flex: 1, backgroundColor: COLORS.bg },
-  content: { padding: 22, paddingBottom: 110 },
-  topbar: {
-    height: 62,
-    paddingHorizontal: 22,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
-  },
-  brand: {
-    color: COLORS.text,
-    fontWeight: "900",
-    letterSpacing: 1.8,
-    fontSize: 16,
-  },
-  brandAccent: { color: COLORS.green },
-  dot: { color: COLORS.green, fontSize: 14 },
-  eyebrow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  eyebrowText: {
-    color: COLORS.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  pill: {
-    backgroundColor: "#30441f",
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  orangePill: { backgroundColor: "#4a3219" },
-  pillText: {
-    color: COLORS.green,
-    fontWeight: "800",
-    fontSize: 10,
-    letterSpacing: 0.7,
-  },
-  hero: {
-    color: COLORS.text,
-    fontSize: 36,
-    fontWeight: "900",
-    letterSpacing: -1.2,
-  },
-  title: {
-    color: COLORS.text,
-    fontSize: 32,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  subtle: { color: COLORS.muted, fontSize: 14, lineHeight: 21, marginTop: 7 },
-  teamRow: { marginTop: 26 },
-  label: {
-    color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-  },
-  teamButtons: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 9 },
-  teamButton: {
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  activeTeam: { borderColor: COLORS.green, backgroundColor: "#2e3d20" },
-  teamText: { color: COLORS.muted, fontWeight: "800", fontSize: 12 },
-  activeTeamText: { color: COLORS.green },
-  card: {
-    backgroundColor: COLORS.panel,
-    borderRadius: 16,
-    padding: 19,
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  progressRow: { flexDirection: "row", justifyContent: "space-between" },
-  cardLabel: {
-    color: COLORS.green,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  progress: {
-    height: 5,
-    backgroundColor: "#344034",
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  progressFill: { height: 5, backgroundColor: COLORS.green, borderRadius: 5 },
-  stepTitle: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: "900",
-    marginTop: 20,
-  },
-  stepBody: { color: "#c3cbbf", fontSize: 14, lineHeight: 21, marginTop: 7 },
-  source: { color: COLORS.muted, fontSize: 11, marginTop: 12 },
-  sectionTitle: {
-    color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-    marginTop: 28,
-    marginBottom: 10,
-  },
-  stepRow: {
-    minHeight: 49,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#263027",
-    paddingHorizontal: 7,
-  },
-  selectedStep: {
-    backgroundColor: COLORS.panel2,
-    borderRadius: 8,
-    borderBottomColor: COLORS.green,
-  },
-  stepNumber: {
-    width: 27,
-    color: COLORS.muted,
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  selectedNumber: { color: COLORS.green },
-  stepText: { color: "#bbc4b9", fontSize: 14, flex: 1 },
-  selectedText: { color: COLORS.text, fontWeight: "800" },
-  chevron: { color: COLORS.green, fontSize: 22 },
-  askButton: {
-    backgroundColor: COLORS.green,
-    minHeight: 54,
-    borderRadius: 10,
-    marginTop: 22,
-    paddingHorizontal: 17,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  askButtonText: { color: "#15200f", fontSize: 15, fontWeight: "900" },
-  askArrow: { color: "#15200f", fontSize: 22 },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 24,
-  },
-  statusLabel: {
-    color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-  },
-  input: {
-    minHeight: 105,
-    marginTop: 22,
-    backgroundColor: COLORS.panel,
-    borderColor: COLORS.line,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 15,
-    color: COLORS.text,
-    fontSize: 15,
-    textAlignVertical: "top",
-  },
-  answer: {
-    backgroundColor: COLORS.panel,
-    borderRadius: 14,
-    padding: 18,
-    marginTop: 20,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.green,
-  },
-  answerHeading: {
-    color: COLORS.green,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-    marginTop: 8,
-  },
-  answerTitle: {
-    color: COLORS.text,
-    fontSize: 16,
-    lineHeight: 23,
-    marginTop: 7,
-  },
-  resolution: { color: "#d0d7cd", fontSize: 14, lineHeight: 22, marginTop: 6 },
-  answerMeta: { marginTop: 17, gap: 5 },
-  suggestion: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#263027",
-  },
-  suggestionText: { flex: 1, color: "#c8d0c5", fontSize: 14 },
-  search: {
-    marginTop: 22,
-    backgroundColor: COLORS.panel,
-    borderColor: COLORS.line,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 13,
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  ruleRow: {
-    paddingVertical: 17,
-    borderBottomWidth: 1,
-    borderBottomColor: "#263027",
-  },
-  ruleName: { color: COLORS.green, fontSize: 18, fontWeight: "900" },
-  ruleBody: { color: "#d0d7cd", fontSize: 14, lineHeight: 21, marginTop: 6 },
-  tabs: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 79,
-    backgroundColor: "#151c16",
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 12,
-  },
-  tab: { alignItems: "center", width: "33%" },
-  tabIcon: { color: COLORS.muted, fontSize: 20, lineHeight: 23 },
-  tabText: {
-    color: COLORS.muted,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 3,
-  },
-  activeTab: { color: COLORS.green },
-});
