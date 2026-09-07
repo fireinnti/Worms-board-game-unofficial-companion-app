@@ -33,3 +33,13 @@ test("the Rules back control explicitly uses the light surface", () => {
     /<Button surface="light" onPress=\{\(\) => setSelected\(null\)\}>Back to all rules<\/Button>/,
   );
 });
+
+test("rule references use readable colors on the dark Rules screen", () => {
+  assert.match(app, /surface = "light"/);
+  assert.match(app, /styles\.ruleNameDark/);
+  assert.match(app, /styles\.ruleBodyDark/);
+  assert.match(app, /references=\{filtered\} onRule=\{setSelected\} surface="dark"/);
+  assert.match(theme, /ruleNameDark:\{color:colors\.grassGreen\}/);
+  assert.match(theme, /ruleBodyDark:\{color:"#E2E8DE"\}/);
+  assert.match(theme, /sourceDark:\{color:colors\.muted/);
+});

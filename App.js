@@ -31,14 +31,15 @@ import { useSession } from "./src/features/game/useSession";
 import { colors, styles, teamColors } from "./src/ui/theme";
 import { Button, Pill, StepMarkers, TabIcon, TeamToken } from "./src/ui/components";
 
-function RuleReferences({ references, onRule, locations = false }) {
+function RuleReferences({ references, onRule, locations = false, surface = "light" }) {
+  const darkSurface = surface === "dark";
   return references.map((rule) => {
     const documentLink = ruleDocumentLink(rule);
     return (
-      <View key={rule.id} style={styles.ruleRow}>
+      <View key={rule.id} style={[styles.ruleRow, darkSurface && styles.ruleRowDark]}>
         <Pressable accessibilityRole="button" onPress={() => onRule(rule.id)}>
-          <Text style={styles.ruleName}>{rule.title} →</Text>
-          <Text style={styles.ruleBody}>{rule.excerpt}</Text>
+          <Text style={[styles.ruleName, darkSurface && styles.ruleNameDark]}>{rule.title} →</Text>
+          <Text style={[styles.ruleBody, darkSurface && styles.ruleBodyDark]}>{rule.excerpt}</Text>
           <View style={styles.sourceBadge}>
             <Text style={styles.source}>{ruleSource(rule)}</Text>
           </View>
@@ -538,8 +539,8 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
       <Text style={styles.title}>{detail ? detail.title : "Rules index"}</Text>
       {detail ? (
         <>
-          <Text style={styles.ruleBody}>{detail.text}</Text>
-          <Text style={styles.source}>{ruleSource(detail)}</Text>
+          <Text style={[styles.ruleBody, styles.ruleBodyDark]}>{detail.text}</Text>
+          <Text style={[styles.source, styles.sourceDark]}>{ruleSource(detail)}</Text>
           <Button surface="light" onPress={() => setSelected(null)}>Back to all rules</Button>
           <Text style={styles.sectionTitle}>RELATED RULES</Text>
           <RuleReferences
@@ -549,6 +550,7 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
                 r.tags.some((tag) => detail.tags.includes(tag)),
             ).slice(0, 4)}
             onRule={setSelected}
+            surface="dark"
           />
         </>
       ) : (
@@ -570,7 +572,7 @@ function RulesScreen({ query, setQuery, selected, setSelected }) {
               No matching terms. Try a Thing or action, such as Fire or Jump.
             </Text>
           )}
-          <RuleReferences references={filtered} onRule={setSelected} />
+          <RuleReferences references={filtered} onRule={setSelected} surface="dark" />
         </>
       )}
     </ScrollView>
